@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - بطاقة الطوارئ</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body { background: #f8fafc; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: white; padding: 24px; border-radius: 16px; width: 100%; max-width: 400px; border: 1px solid #e2e8f0; }
+        h2 { text-align: center; margin-bottom: 20px; color: #0f172a; }
+        input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
+        button.signup { background: #475569; }
+    </style>
+</head>
+<body>
+
+
+<div class="card">
+    <h2>تسجيل الدخول / حساب جديد</h2>
+    <input type="email" id="email" placeholder="البريد الإلكتروني">
+    <input type="password" id="password" placeholder="كلمة المرور">
+    <button onclick="login()">دخول</button>
+    <button class="signup" onclick="signup()">إنشاء حساب جديد</button>
+</div>
+
+
+<script>
+    const SUPABASE_URL = 'https://ftxpznrkqoofgxbuqpub.supabase.co/rest/v1/';
+    const SUPABASE_KEY = 'sb_publishable_LNAb91Fq-HzoFGfOEXEy6A_3oCPp9yd';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) alert('خطأ في الدخول: ' + error.message);
+        else window.location.href = 'dashboard.html';
+    }
+
+
+    async function signup() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) alert('خطأ في إنشاء الحساب: ' + error.message);
+        else {
+            alert('تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.');
+        }
+    }
+</script>
+</body>
+</html>

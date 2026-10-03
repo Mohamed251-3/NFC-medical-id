@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بطاقة الطوارئ الطبية</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --danger: #d90429; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 16px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 16px; }
+        .header { background: var(--danger); color: white; padding: 18px; border-radius: 16px; text-align: center; }
+        .card { background: var(--card); border-radius: 16px; padding: 18px; border: 1px solid #e2e8f0; }
+        .title { font-size: 1.2rem; font-weight: bold; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .box { background: #f1f5f9; padding: 10px; border-radius: 10px; text-align: center; }
+        .box.alert { background: #ffe5e5; color: var(--danger); }
+        .tag { display: inline-block; background: #e2e8f0; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; margin: 2px; }
+        .tag.critical { background: #ffe5e5; color: var(--danger); font-weight: bold; }
+        .btn { display: block; width: 100%; background: #16a34a; color: white; text-align: center; padding: 14px; border-radius: 12px; text-decoration: none; font-weight: bold; margin-top: 8px; }
+        .btn.secondary { background: #0284c7; }
+        #loading { text-align: center; padding: 40px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+
+<div class="container">
+    <div id="loading">جاري جلب البيانات الطبية...</div>
+
+
+    <div id="content" style="display: none;" class="container">
+        <div class="header">
+            <h2>🚨 ملف طوارئ طبي</h2>
+            <p>بيانات حيوية للمسعفين وفريق الرعاية</p>
+        </div>
+
+
+        <div class="card">
+            <div class="title" id="p-name">---</div>
+            <div class="grid">
+                <div class="box alert">
+                    <small>فصيلة الدم</small>
+                    <h3 id="p-blood">---</h3>
+                </div>
+            </div>
+
+
+            <p><strong>⚠️ الحساسية الحرجة:</strong></p>
+            <div id="p-allergies" style="margin-bottom: 10px;"></div>
+
+
+            <p><strong>🩺 الأمراض المزمنة:</strong></p>
+            <div id="p-conditions" style="margin-bottom: 10px;"></div>
+
+
+            <p><strong>💊 الأدوية الحالية:</strong></p>
+            <div id="p-meds" style="margin-bottom: 10px;"></div>
+
+
+            <p><strong>🏥 العمليات الجراحية والأجهزة:</strong></p>
+            <div id="p-surgeries"></div>
+        </div>
+
+
+        <div class="card">
+            <div class="title">جهات الاتصال للطوارئ</div>
+            <a id="p-phone1" href="#" class="btn">📞 اتصال بالطوارئ (1)</a>
+            <a id="p-phone2" href="#" class="btn secondary">📞 اتصال بالطوارئ (2)</a>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // ضع بيانات مشروعك من Supabase هنا
+    const SUPABASE_URL = 'https://ftxpznrkqoofgxbuqpub.supabase.co/rest/v1/';
+    const SUPABASE_KEY = 'sb_publishable_LNAb91Fq-HzoFGfOEXEy6A_3oCPp9yd';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+
+    async function loadProfile() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('id');
+
+
+        if (!userId) {
+            document.getElementById('loading').innerText = 'رابط غير صحيح أو لا يوجد معرف مريض.';
+            return;
+        }
+
+
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+
+        if (error || !data) {
+            document.getElementById('loading').innerText = 'لم يتم العثور على بيانات المريض.';
+            return;
+        }
+
+
+        document.getElementById('p-name').innerText = data.full_name || 'غير محدد';
+        document.getElementById('p-blood').innerText = data.blood_type || 'غير معروف';
+        
+        renderTags('p-allergies', data.allergies, true);
+        renderTags('p-conditions', data.chronic_conditions);
+        renderTags('p-meds', data.medications);
+        renderTags('p-surgeries', data.surgeries);
+
+
+        if(data.phone_1) {
+            document.getElementById('p-phone1').href = 'tel:' + data.phone_1;
+            document.getElementById('p-phone1').innerText = '📞 اتصال: ' + data.phone_1;
+        }
+        if(data.phone_2) {
+            document.getElementById('p-phone2').href = 'tel:' + data.phone_2;
+            document.getElementById('p-phone2').innerText = '📞 اتصال بديل: ' + data.phone_2;
+        }
+
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'flex';
+    }
+
+
+    function renderTags(elementId, text, isCritical = false) {
+        const container = document.getElementById(elementId);
+        container.innerHTML = '';
+        if (!text) { container.innerHTML = '<small>لا يوجد</small>'; return; }
+        text.split(',').forEach(item => {
+            if(item.trim()) {
+                const span = document.createElement('span');
+                span.className = 'tag' + (isCritical ? ' critical' : '');
+                span.innerText = item.trim();
+                container.appendChild(span);
+            }
+        });
+    }
+
+
+    window.onload = loadProfile;
+</script>
+</body>
+</html>

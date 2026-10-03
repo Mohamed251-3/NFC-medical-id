@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم بالبيانات الطبية</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body { background: #f8fafc; padding: 16px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; }
+        h2 { margin-bottom: 16px; text-align: center; color: #0f172a; }
+        label { font-size: 0.85rem; font-weight: bold; color: #475569; display: block; margin-top: 10px; margin-bottom: 4px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        button { width: 100%; padding: 14px; background: #16a34a; color: white; border: none; border-radius: 8px; font-weight: bold; margin-top: 16px; cursor: pointer; }
+        .nfc-box { background: #eff6ff; border: 1px dashed #3b82f6; padding: 12px; border-radius: 8px; margin-bottom: 16px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+
+<div class="container">
+    <h2>تعديل ملفك الطبي</h2>
+
+
+    <div class="nfc-box">
+        <small style="color: #1d4ed8; font-weight: bold;">رابط شريحة الـ NFC الخاص بك:</small>
+        <p id="nfc-link" style="font-size: 0.85rem; margin-top: 4px;">جاري التجهيز...</p>
+    </div>
+
+
+    <form id="profile-form">
+        <label>الاسم بالكامل</label>
+        <input type="text" id="full_name" required>
+
+
+        <label>فصيلة الدم</label>
+        <select id="blood_type">
+            <option value="A+">A+</option><option value="A-">A-</option>
+            <option value="B+">B+</option><option value="B-">B-</option>
+            <option value="AB+">AB+</option><option value="AB-">AB-</option>
+            <option value="O+">O+</option><option value="O-">O-</option>
+        </select>
+
+
+        <label>الحساسية الحرجة (افصل بينها بفاصلة ,)</label>
+        <input type="text" id="allergies" placeholder="مثال: البنسلين, المكسرات">
+
+
+        <label>الأمراض المزمنة (افصل بينها بفاصلة ,)</label>
+        <input type="text" id="chronic_conditions" placeholder="مثال: السكري, الضغط">
+
+
+        <label>الأدوية الحالية</label>
+        <input type="text" id="medications" placeholder="مثال: أنسولين, أسبرين">
+
+
+        <label>العمليات والشرائح والجراحات</label>
+        <input type="text" id="surgeries" placeholder="مثال: دعامة بالقلب, شرائح بالساق">
+
+
+        <label>رقم هاتف الطوارئ (1)</label>
+        <input type="tel" id="phone_1" required>
+
+
+        <label>رقم هاتف الطوارئ (2)</label>
+        <input type="tel" id="phone_2">
+
+
+        <button type="button" onclick="saveData()">حفظ التعديلات</button>
+        <button type="button" onclick="logout()" style="background: #ef4444; margin-top: 8px;">تسجيل الخروج</button>
+    </form>
+</div>
+
+
+<script>
+    const SUPABASE_URL = 'https://ftxpznrkqoofgxbuqpub.supabase.co/rest/v1/';
+    const SUPABASE_KEY = 'sb_publishable_LNAb91Fq-HzoFGfOEXEy6A_3oCPp9yd';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+
+    let currentUser = null;
+
+
+    async function initDashboard() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            window.location.href = 'login.html';
+            return;
+        }
+        currentUser = user;
+
+
+        // إظهار رابط الـ NFC المخصص للمريض
+        const myNfcUrl = window.location.origin + '/profile.html?id=' + user.id;
+        document.getElementById('nfc-link').innerText = myNfcUrl;
+
+
+        // جلب البيانات الحالية إن وجدت
+        const { data } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+        if (data) {
+            document.getElementById('full_name').value = data.full_name || '';
+            document.getElementById('blood_type').value = data.blood_type || 'O+';
+            document.getElementById('allergies').value = data.allergies || '';
+            document.getElementById('chronic_conditions').value = data.chronic_conditions || '';
+            document.getElementById('medications').value = data.medications || '';
+            document.getElementById('surgeries').value = data.surgeries || '';
+            document.getElementById('phone_1').value = data.phone_1 || '';
+            document.getElementById('phone_2').value = data.phone_2 || '';
+        }
+    }
+
+
+    async function saveData() {
+        const updates = {
+            id: currentUser.id,
+            full_name: document.getElementById('full_name').value,
+            blood_type: document.getElementById('blood_type').value,
+            allergies: document.getElementById('allergies').value,
+            chronic_conditions: document.getElementById('chronic_conditions').value,
+            medications: document.getElementById('medications').value,
+            surgeries: document.getElementById('surgeries').value,
+            phone_1: document.getElementById('phone_1').value,
+            phone_2: document.getElementById('phone_2').value,
+            updated_at: new Date()
+        };
+
+
+        const { error } = await supabaseClient.from('profiles').upsert(updates);
+        if (error) alert('حدث خطأ أثناء الحفظ: ' + error.message);
+        else alert('تم حفظ البيانات بنجاح! ستظهر فوراً عند مسح شريحة NFC الخاصة بك.');
+    }
+
+
+    async function logout() {
+        await supabaseClient.auth.signOut();
+        window.location.href = 'login.html';
+    }
+
+
+    window.onload = initDashboard;
+</script>
+</body>
+</html>
